@@ -1,6 +1,0 @@
-cd verifai
-git init
-git remote add origin https://github.com/tbomathieu/VerifAI.git
-git add .
-git commit -m "Launch VerifAI PWA"
-git push -u origin main
