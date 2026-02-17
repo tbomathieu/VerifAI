@@ -1,0 +1,2242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="description" content="VerifAI – Real-time AI-powered fact checking">
+<meta name="theme-color" content="#22c55e">
+
+<!-- PWA Manifest -->
+<link rel="manifest" href="./manifest.json">
+
+<!-- iOS PWA -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="VerifAI">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="152x152" href="./icons/icon-152x152.png">
+<link rel="apple-touch-icon" sizes="192x192" href="./icons/icon-192x192.png">
+
+<!-- Splash screens for iPhone -->
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<!-- Android / General -->
+<link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192x192.png">
+
+<title>VerifAI – Fact Checker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --trust: #22c55e;
+    --trust-dim: rgba(34,197,94,0.12);
+    --warn: #f59e0b;
+    --warn-dim: rgba(245,158,11,0.12);
+    --false: #ef4444;
+    --false-dim: rgba(239,68,68,0.12);
+    --bg: #0f1117;
+    --surface: #181c25;
+    --surface2: #1e2333;
+    --border: rgba(255,255,255,0.07);
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --accent: #2563EB;
+    --accent-dim: rgba(37,99,235,0.15);
+    --radius: 16px;
+    --radius-sm: 10px;
+  }
+
+  .light {
+    --bg: #f4f6fb;
+    --surface: #ffffff;
+    --surface2: #f0f2f8;
+    --border: rgba(0,0,0,0.08);
+    --text: #111827;
+    --muted: #9ca3af;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  html, body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100%;
+    overflow-x: hidden;
+    transition: background 0.3s, color 0.3s;
+  }
+
+  /* ── Layout ── */
+  #app {
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  /* ── Header ── */
+  header {
+    padding: 20px 20px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 50;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .logo-text {
+    display: flex;
+    align-items: center;
+  }
+
+  #logo-wordmark text { dominant-baseline: auto; }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .icon-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 15px;
+    transition: all 0.2s;
+    color: var(--muted);
+  }
+
+  .icon-btn:hover { background: var(--surface2); color: var(--text); }
+
+  /* ── Nav Tabs ── */
+  .nav-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 14px 20px 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .nav-tabs::-webkit-scrollbar { display: none; }
+
+  .tab {
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+  }
+
+  .tab.active {
+    background: var(--accent-dim);
+    color: #60a5fa;
+  }
+
+  .tab:hover:not(.active) { background: var(--surface); color: var(--text); }
+
+  /* ── Main Content ── */
+  main {
+    flex: 1;
+    padding: 16px 20px 100px;
+    overflow-y: auto;
+  }
+
+  .page { display: none; }
+  .page.active { display: block; animation: fadeUp 0.25s ease; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Quick Check Page ── */
+  .check-label {
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .input-wrap {
+    position: relative;
+    margin-bottom: 12px;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    resize: none;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  textarea::placeholder { color: var(--muted); }
+  textarea:focus { border-color: rgba(37,99,235,0.4); }
+
+  .char-count {
+    position: absolute;
+    bottom: 10px;
+    right: 12px;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .url-input {
+    width: 100%;
+    padding: 11px 16px;
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 12.5px;
+    outline: none;
+    transition: border-color 0.2s;
+    margin-bottom: 14px;
+  }
+
+  .url-input::placeholder { color: var(--muted); }
+  .url-input:focus { border-color: rgba(37,99,235,0.4); }
+
+  .btn-check {
+    width: 100%;
+    padding: 14px;
+    background: var(--accent);
+    border: none;
+    border-radius: var(--radius);
+    color: #fff;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    letter-spacing: -0.2px;
+  }
+
+  .btn-check:hover { background: #1d4ed8; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(37,99,235,0.3); }
+  .btn-check:active { transform: translateY(0); }
+  .btn-check:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  /* ── Loading ── */
+  .loader {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 32px 0 24px;
+  }
+
+  .loader.visible { display: flex; }
+
+  .pulse-ring {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loader-text {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .loader-steps {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .loader-step {
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: 20px;
+    background: var(--surface);
+    color: var(--muted);
+    transition: all 0.3s;
+  }
+
+  .loader-step.done {
+    background: var(--trust-dim);
+    color: var(--trust);
+  }
+
+  .loader-step.active {
+    background: var(--accent-dim);
+    color: #60a5fa;
+    animation: stepPulse 1s ease-in-out infinite;
+  }
+
+  @keyframes stepPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+
+  /* ── Result Card ── */
+  .result-card {
+    margin-top: 18px;
+    border-radius: var(--radius);
+    border: 1.5px solid var(--border);
+    overflow: hidden;
+    animation: fadeUp 0.3s ease;
+    display: none;
+  }
+
+  .result-card.visible { display: block; }
+
+  .result-header {
+    padding: 16px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .verdict-badge {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .verdict-badge.verified   { background: var(--trust-dim); }
+  .verdict-badge.questionable { background: var(--warn-dim); }
+  .verdict-badge.false      { background: var(--false-dim); }
+
+  .verdict-info { flex: 1; }
+
+  .verdict-label {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+
+  .verdict-label.verified     { color: var(--trust); }
+  .verdict-label.questionable { color: var(--warn); }
+  .verdict-label.false        { color: var(--false); }
+
+  .verdict-sub {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .confidence-bar {
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .confidence-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.8s ease;
+  }
+
+  .confidence-fill.verified     { background: var(--trust); }
+  .confidence-fill.questionable { background: var(--warn); }
+  .confidence-fill.false        { background: var(--false); }
+
+  .result-body { padding: 0 18px 18px; }
+
+  .result-summary {
+    font-size: 13.5px;
+    line-height: 1.65;
+    color: var(--text);
+    margin-bottom: 14px;
+    padding: 12px;
+    background: var(--surface2);
+    border-radius: var(--radius-sm);
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .source-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: all 0.18s;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .source-item:hover { border-color: rgba(37,99,235,0.3); background: var(--accent-dim); }
+
+  .source-rank {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    flex-shrink: 0;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .source-item:nth-child(1) .source-rank { background: var(--trust-dim); color: var(--trust); border-color: rgba(34,197,94,0.25); }
+  .source-item:nth-child(2) .source-rank { background: var(--accent-dim); color: #60a5fa; border-color: rgba(37,99,235,0.25); }
+  .source-item:nth-child(3) .source-rank { background: var(--surface2); color: var(--muted); }
+
+  .source-info { flex: 1; min-width: 0; }
+
+  .source-name {
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .source-desc {
+    font-size: 11.5px;
+    color: var(--muted);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .source-arrow {
+    font-size: 12px;
+    color: var(--muted);
+    align-self: center;
+    flex-shrink: 0;
+  }
+
+  /* ── Alert Toast ── */
+  #alert-toast {
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-80px);
+    background: var(--false);
+    color: white;
+    padding: 10px 18px;
+    border-radius: 24px;
+    font-size: 13px;
+    font-weight: 500;
+    z-index: 200;
+    transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    box-shadow: 0 4px 20px rgba(239,68,68,0.4);
+    max-width: 90vw;
+  }
+
+  #alert-toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ── Trusted Sources Page ── */
+  .sources-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+
+  /* Source library groups */
+  .lib-group {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+
+  .lib-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 14px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+  }
+
+  .lib-group-header:hover { background: var(--surface2); }
+
+  .lib-group-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .lib-group-icon {
+    font-size: 15px;
+    width: 22px;
+    text-align: center;
+  }
+
+  .lib-group-name {
+    font-size: 13.5px;
+    font-weight: 500;
+  }
+
+  .lib-group-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .lib-group-count {
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--surface2);
+    padding: 2px 7px;
+    border-radius: 20px;
+  }
+
+  .lib-group-count.has-active {
+    background: var(--trust-dim);
+    color: var(--trust);
+  }
+
+  .lib-select-all {
+    font-size: 11px;
+    color: var(--accent);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    transition: background 0.15s;
+  }
+
+  .lib-select-all:hover { background: var(--accent-dim); }
+
+  .lib-group-chevron {
+    font-size: 11px;
+    color: var(--muted);
+    transition: transform 0.2s;
+  }
+
+  .lib-group.open .lib-group-chevron { transform: rotate(90deg); }
+
+  .lib-group-body {
+    display: none;
+    border-top: 1px solid var(--border);
+    padding: 6px 8px 8px;
+  }
+
+  .lib-group.open .lib-group-body { display: block; }
+
+  .lib-source-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 8px;
+    border-radius: 8px;
+    transition: background 0.12s;
+    cursor: pointer;
+  }
+
+  .lib-source-row:hover { background: var(--surface2); }
+
+  .lib-source-name {
+    flex: 1;
+    font-size: 13px;
+    font-weight: 400;
+  }
+
+  .lib-source-url {
+    font-size: 10.5px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .lib-source-btn {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .lib-source-btn:hover { border-color: var(--accent); color: #60a5fa; background: var(--accent-dim); }
+
+  .lib-source-btn.added {
+    background: var(--trust-dim);
+    color: var(--trust);
+    border-color: rgba(34,197,94,0.3);
+  }
+
+  #sourceSearch { }
+  #sourceSearch:focus { border-color: rgba(37,99,235,0.4); }
+
+  .sources-title { font-size: 15px; font-weight: 600; }
+  .sources-count {
+    font-size: 12px;
+    color: var(--muted);
+    background: var(--surface2);
+    padding: 3px 8px;
+    border-radius: 20px;
+  }
+
+  .add-source-form {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+
+  .add-source-form input {
+    width: 100%;
+    padding: 9px 13px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13.5px;
+    outline: none;
+    margin-bottom: 8px;
+    transition: border-color 0.2s;
+  }
+
+  .add-source-form input:focus { border-color: rgba(37,99,235,0.4); }
+  .add-source-form input::placeholder { color: var(--muted); }
+
+  .add-source-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .category-select {
+    flex: 1;
+    padding: 9px 13px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13.5px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .btn-add {
+    padding: 9px 16px;
+    background: var(--accent);
+    border: none;
+    border-radius: var(--radius-sm);
+    color: white;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .btn-add:hover { background: #1d4ed8; }
+
+  .source-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .managed-source {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 14px;
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+  }
+
+  .source-toggle {
+    width: 36px;
+    height: 20px;
+    background: var(--border);
+    border-radius: 10px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.2s;
+    flex-shrink: 0;
+    border: none;
+    outline: none;
+  }
+
+  .source-toggle.on { background: var(--trust); }
+
+  .source-toggle::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  }
+
+  .source-toggle.on::after { transform: translateX(16px); }
+
+  .managed-source-info { flex: 1; min-width: 0; }
+
+  .managed-source-name {
+    font-size: 13.5px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .managed-source-url {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .source-cat {
+    font-size: 10.5px;
+    padding: 2px 7px;
+    border-radius: 6px;
+    background: var(--surface2);
+    color: var(--muted);
+    text-transform: capitalize;
+  }
+
+  .btn-del {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--muted);
+    padding: 4px;
+    border-radius: 6px;
+    transition: all 0.15s;
+  }
+  
+  .btn-del:hover { color: var(--false); background: var(--false-dim); }
+
+  /* ── History Page ── */
+  .history-filters {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 14px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  .filter-chip {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    transition: all 0.15s;
+  }
+
+  .filter-chip.active { border-color: var(--accent); background: var(--accent-dim); color: #60a5fa; }
+
+  .history-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .history-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 14px;
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .history-item:hover { border-color: rgba(37,99,235,0.2); }
+
+  .history-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .history-dot.verified { background: var(--trust); }
+  .history-dot.questionable { background: var(--warn); }
+  .history-dot.false { background: var(--false); }
+
+  .history-text {
+    flex: 1;
+    font-size: 13px;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    color: var(--text);
+  }
+
+  .history-meta {
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .history-verdict {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+  }
+
+  .history-verdict.verified { color: var(--trust); }
+  .history-verdict.questionable { color: var(--warn); }
+  .history-verdict.false { color: var(--false); }
+
+  .history-time {
+    font-size: 10.5px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--muted);
+  }
+
+  .empty-state .empty-icon { font-size: 36px; margin-bottom: 12px; }
+  .empty-state .empty-title { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
+  .empty-state .empty-sub { font-size: 13px; }
+
+  /* ── Pro Page ── */
+  .pro-card {
+    background: linear-gradient(135deg, #1a2a4a 0%, #0f1825 100%);
+    border: 1px solid rgba(37,99,235,0.3);
+    border-radius: var(--radius);
+    padding: 24px 20px;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+
+  .pro-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(37,99,235,0.2);
+    border: 1px solid rgba(37,99,235,0.3);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #60a5fa;
+    margin-bottom: 14px;
+    letter-spacing: 0.3px;
+  }
+
+  .pro-title {
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    letter-spacing: -0.5px;
+  }
+
+  .pro-price {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+
+  .pro-price strong { color: var(--trust); font-size: 20px; }
+
+  .pro-features { text-align: left; margin-bottom: 20px; }
+
+  .pro-feature {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    font-size: 13.5px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .pro-feature:last-child { border-bottom: none; }
+
+  .pro-feature-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    background: var(--accent-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+
+  .feature-lock { opacity: 0.4; font-size: 11px; }
+
+  .btn-waitlist {
+    width: 100%;
+    padding: 13px;
+    background: var(--accent);
+    border: none;
+    border-radius: var(--radius);
+    color: white;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-waitlist:hover { background: #1d4ed8; transform: translateY(-1px); }
+
+  .beta-note {
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 12px;
+  }
+
+  .beta-note strong { color: var(--trust); }
+
+  /* ── Claim Analysis ── */
+  .claims-list { margin-top: 12px; }
+
+  .claim-item {
+    padding: 10px 12px;
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    margin-bottom: 6px;
+  }
+
+  .claim-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+
+  .claim-status {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  .claim-status.verified     { background: var(--trust-dim); color: var(--trust); }
+  .claim-status.questionable { background: var(--warn-dim); color: var(--warn); }
+  .claim-status.false        { background: var(--false-dim); color: var(--false); }
+
+  .claim-text {
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.45;
+  }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 100;
+    display: none;
+    align-items: flex-end;
+    backdrop-filter: blur(4px);
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    background: var(--surface);
+    border-radius: var(--radius) var(--radius) 0 0;
+    padding: 20px;
+    max-height: 80vh;
+    overflow-y: auto;
+    animation: slideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1);
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+
+  .modal-handle {
+    width: 36px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 16px;
+  }
+
+  .modal-title { font-size: 16px; font-weight: 600; margin-bottom: 14px; }
+
+  /* ── Settings in modal ── */
+  .settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .settings-row:last-child { border-bottom: none; }
+
+  .settings-label {
+    font-size: 14px;
+  }
+
+  .settings-sub {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  /* ── Floating FAB ── */
+  #fab {
+    position: fixed;
+    bottom: 88px;
+    right: 20px;
+    width: 52px;
+    height: 52px;
+    background: var(--trust);
+    border-radius: 16px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(34,197,94,0.4);
+    border: none;
+    z-index: 80;
+    transition: all 0.2s;
+    color: #0a1a0f;
+  }
+
+  #fab:hover { transform: scale(1.05); box-shadow: 0 6px 24px rgba(34,197,94,0.5); }
+
+  /* ── Bottom Nav ── */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 480px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    padding: 8px 0 20px;
+    z-index: 60;
+  }
+
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    padding: 6px 0;
+    border: none;
+    background: none;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    transition: color 0.15s;
+  }
+
+  .nav-item.active { color: var(--accent); }
+
+  .nav-icon { font-size: 20px; }
+  .nav-label { font-size: 10px; font-weight: 500; letter-spacing: 0.2px; }
+
+  /* ── Misc ── */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 14px 0;
+  }
+
+  .tag-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+
+  .tag {
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11.5px;
+    background: var(--surface2);
+    color: var(--muted);
+  }
+
+  .section-group {
+    margin-bottom: 20px;
+  }
+
+  .snackbar {
+    position: fixed;
+    bottom: 88px;
+    left: 50%;
+    transform: translateX(-50%) translateY(30px);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 10px 16px;
+    border-radius: 24px;
+    font-size: 13px;
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 150;
+  }
+
+  .snackbar.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">
+      <svg width="36" height="36" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0; filter: drop-shadow(0 0 10px rgba(34,197,94,0.4));">
+        <rect width="34" height="34" rx="10" fill="#22c55e"/>
+        <polyline points="8,17 13.5,24 26,10" stroke="white" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
+      <svg id="logo-wordmark" viewBox="0 0 80 23" fill="none" xmlns="http://www.w3.org/2000/svg" style="height:24px; width:auto; overflow:visible;">
+        <polyline points="2.3,11 8.6,19 19.4,7" stroke="white" stroke-width="3.0" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <text x="21.4" y="19.5" font-family="'DM Sans', sans-serif" font-size="19" font-weight="600" letter-spacing="-0.4">
+          <tspan fill="var(--text)">erif</tspan><tspan fill="#22c55e">AI</tspan>
+        </text>
+      </svg>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" id="themeBtn" title="Toggle theme">🌙</button>
+      <button class="icon-btn" id="settingsBtn" title="Settings">⚙️</button>
+    </div>
+  </header>
+
+  <!-- Nav Tabs -->
+  <div class="nav-tabs">
+    <button class="tab active" data-page="check">Quick Check</button>
+    <button class="tab" data-page="sources">Trusted Sources</button>
+    <button class="tab" data-page="history">History</button>
+    <button class="tab" data-page="pro">Pro ✦</button>
+  </div>
+
+  <!-- Main -->
+  <main>
+
+    <!-- Quick Check Page -->
+    <div class="page active" id="page-check">
+      <br>
+      <div class="check-label">Paste text to verify</div>
+      <div class="input-wrap">
+        <textarea id="checkInput" placeholder="Paste a claim, headline, or article excerpt you want to fact-check..." maxlength="2000"></textarea>
+        <span class="char-count" id="charCount">0/2000</span>
+      </div>
+
+      <input type="url" class="url-input" id="urlInput" placeholder="Or paste a URL (optional)">
+
+      <button class="btn-check" id="checkBtn">
+        <span>✓</span> Verify Now
+      </button>
+
+      <!-- Loader -->
+      <div class="loader" id="loader">
+        <div class="pulse-ring"></div>
+        <div class="loader-text">Checking your content...</div>
+        <div class="loader-steps">
+          <span class="loader-step" id="step1">Extracting claims</span>
+          <span class="loader-step" id="step2">Querying sources</span>
+          <span class="loader-step" id="step3">Cross-referencing</span>
+          <span class="loader-step" id="step4">Generating verdict</span>
+        </div>
+      </div>
+
+      <!-- Result -->
+      <div class="result-card" id="resultCard">
+        <div class="result-header">
+          <div class="verdict-badge" id="verdictBadge"></div>
+          <div class="verdict-info">
+            <div class="verdict-label" id="verdictLabel"></div>
+            <div class="verdict-sub" id="verdictSub"></div>
+          </div>
+        </div>
+        <div class="confidence-bar" style="margin: 0 18px;">
+          <div class="confidence-fill" id="confidenceFill" style="width:0%"></div>
+        </div>
+        <div class="result-body">
+          <br>
+          <!-- Brief corrected summary -->
+          <div class="result-summary" id="resultSummary"></div>
+
+          <!-- Top 3 trusted sources -->
+          <div class="section-group" id="sourcesSection">
+            <div class="section-label" id="sourcesLabel">Top sources</div>
+            <div id="sourceLinks"></div>
+          </div>
+
+          <div class="tag-row" id="tagsRow"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Trusted Sources Page -->
+    <div class="page" id="page-sources">
+      <br>
+      <div class="sources-header">
+        <div>
+          <div class="sources-title">Trusted Sources</div>
+          <div style="font-size:12px; color:var(--muted); margin-top:3px;">Choose what VerifAI checks against</div>
+        </div>
+        <div class="sources-count" id="sourcesCount">0 active</div>
+      </div>
+
+      <!-- Search bar -->
+      <div style="position:relative; margin-bottom:12px;">
+        <input type="search" id="sourceSearch" placeholder="Search sources..." style="width:100%; padding:10px 36px 10px 14px; background:var(--surface); border:1.5px solid var(--border); border-radius:var(--radius-sm); color:var(--text); font-family:'DM Sans',sans-serif; font-size:13.5px; outline:none; transition:border-color 0.2s;">
+        <span style="position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:14px; pointer-events:none;">🔍</span>
+      </div>
+
+      <!-- Active sources list -->
+      <div id="activeSourcesWrap" style="margin-bottom:18px; display:none;">
+        <div class="section-label" style="margin-bottom:8px;">Your active sources</div>
+        <div class="source-list" id="sourceList"></div>
+      </div>
+
+      <!-- Source Library -->
+      <div class="section-label" style="margin-bottom:10px;">Source library</div>
+      <div id="sourceLibrary"></div>
+
+      <!-- Custom source add -->
+      <div style="margin-top:18px;">
+        <div class="section-label" style="margin-bottom:8px;">Add a custom source</div>
+        <div class="add-source-form">
+          <input type="text" id="sourceName" placeholder="Source name (e.g. Reuters)">
+          <input type="url" id="sourceUrl" placeholder="URL (e.g. https://reuters.com)">
+          <div class="add-source-row">
+            <select class="category-select" id="sourceCategory">
+              <option value="news">News</option>
+              <option value="fact-check">Fact-Check</option>
+              <option value="government">Government</option>
+              <option value="science">Science</option>
+              <option value="health">Health</option>
+              <option value="academic">Academic</option>
+              <option value="data">Data</option>
+              <option value="tech">Technology</option>
+              <option value="finance">Finance</option>
+              <option value="other">Other</option>
+            </select>
+            <button class="btn-add" id="addSourceBtn">+ Add</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- History Page -->
+    <div class="page" id="page-history">
+      <br>
+      <div class="history-filters">
+        <button class="filter-chip active" data-filter="all">All</button>
+        <button class="filter-chip" data-filter="verified">✓ Verified</button>
+        <button class="filter-chip" data-filter="questionable">⚠ Questionable</button>
+        <button class="filter-chip" data-filter="false">✗ False</button>
+      </div>
+      <div class="history-list" id="historyList"></div>
+    </div>
+
+    <!-- Pro Page -->
+    <div class="page" id="page-pro">
+      <br>
+      <div class="pro-card">
+        <div class="pro-badge">✦ VerifAI Pro</div>
+        <div class="pro-title">Upgrade your truth filter</div>
+        <div class="pro-price">Currently free · Pro coming soon at <strong>$1</strong>/month</div>
+
+        <div class="pro-features">
+          <div class="pro-feature">
+            <div class="pro-feature-icon">🔍</div>
+            <div>
+              <div style="font-weight:500;">Real-time browser extension</div>
+              <div class="feature-lock">Highlights claims as you browse · Pro</div>
+            </div>
+          </div>
+          <div class="pro-feature">
+            <div class="pro-feature-icon">🎙️</div>
+            <div>
+              <div style="font-weight:500;">Voice & audio fact-check</div>
+              <div class="feature-lock">Check spoken content live · Pro</div>
+            </div>
+          </div>
+          <div class="pro-feature">
+            <div class="pro-feature-icon">📊</div>
+            <div>
+              <div style="font-weight:500;">Source bias scoring</div>
+              <div class="feature-lock">See political lean of sources · Pro</div>
+            </div>
+          </div>
+          <div class="pro-feature">
+            <div class="pro-feature-icon">🔔</div>
+            <div>
+              <div style="font-weight:500;">Push alerts on trending misinfo</div>
+              <div class="feature-lock">Get notified before it spreads · Pro</div>
+            </div>
+          </div>
+          <div class="pro-feature">
+            <div class="pro-feature-icon">📁</div>
+            <div>
+              <div style="font-weight:500;">Unlimited history & export</div>
+              <div class="feature-lock">CSV / PDF export · Pro</div>
+            </div>
+          </div>
+          <div class="pro-feature">
+            <div class="pro-feature-icon">🌐</div>
+            <div>
+              <div style="font-weight:500;">Multi-language support</div>
+              <div class="feature-lock">Check in 30+ languages · Pro</div>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn-waitlist" onclick="showSnack('You\'re on the waitlist! We\'ll notify you at launch. 🎉')">
+          Join the Waitlist — Free
+        </button>
+      </div>
+
+      <div class="beta-note">
+        Currently in <strong>6-month free beta</strong>. All basic features are free.<br>Pro launches at $1/month — cancel anytime.
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Bottom Nav -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" data-page="check">
+      <span class="nav-icon">🔍</span>
+      <span class="nav-label">Check</span>
+    </button>
+    <button class="nav-item" data-page="sources">
+      <span class="nav-icon">📋</span>
+      <span class="nav-label">Sources</span>
+    </button>
+    <button class="nav-item" data-page="history">
+      <span class="nav-icon">🕐</span>
+      <span class="nav-label">History</span>
+    </button>
+    <button class="nav-item" data-page="pro">
+      <span class="nav-icon">✦</span>
+      <span class="nav-label">Pro</span>
+    </button>
+  </nav>
+
+</div>
+
+<!-- Alert Toast -->
+<div id="alert-toast">⚠️ <span id="alertText">Misinformation detected</span></div>
+
+<!-- Snackbar -->
+<div class="snackbar" id="snackbar"></div>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Settings</div>
+
+    <div class="settings-row">
+      <div>
+        <div class="settings-label">Auto-check clipboard</div>
+        <div class="settings-sub">Alert when copied text may be false</div>
+      </div>
+      <button class="source-toggle" id="autoCheckToggle"></button>
+    </div>
+
+    <div class="settings-row">
+      <div>
+        <div class="settings-label">Background monitoring</div>
+        <div class="settings-sub">Passive scan while you browse</div>
+      </div>
+      <button class="source-toggle on" id="bgMonitorToggle"></button>
+    </div>
+
+    <div class="settings-row">
+      <div>
+        <div class="settings-label">Alert on false only</div>
+        <div class="settings-sub">Only notify for confirmed false content</div>
+      </div>
+      <button class="source-toggle on" id="alertFalseOnlyToggle"></button>
+    </div>
+
+    <div class="settings-row">
+      <div>
+        <div class="settings-label">Sensitivity threshold</div>
+        <div class="settings-sub">How strict the detection is</div>
+      </div>
+      <select class="category-select" style="width:auto; padding: 5px 10px; font-size:12px;">
+        <option>Strict</option>
+        <option selected>Balanced</option>
+        <option>Lenient</option>
+      </select>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="settings-row">
+      <div>
+        <div class="settings-label">Clear history</div>
+        <div class="settings-sub">Delete all past checks</div>
+      </div>
+      <button class="btn-del" onclick="clearHistory(); closeSettings();">🗑️ Clear</button>
+    </div>
+
+    <br>
+    <button class="btn-check" onclick="closeSettings()">Done</button>
+  </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────
+let history_data = JSON.parse(localStorage.getItem('verifai_history') || '[]');
+let trusted_sources = JSON.parse(localStorage.getItem('verifai_sources') || 'null') || [
+  { id: 1,  name: 'Reuters',              url: 'https://reuters.com',              category: 'news',       enabled: true },
+  { id: 2,  name: 'AFP',                  url: 'https://afp.com',                  category: 'news',       enabled: true },
+  { id: 3,  name: 'Bloomberg',            url: 'https://bloomberg.com',            category: 'news',       enabled: true },
+  { id: 4,  name: 'BBC News',             url: 'https://bbc.com/news',             category: 'news',       enabled: true },
+  { id: 5,  name: 'The Guardian',         url: 'https://theguardian.com',          category: 'news',       enabled: true },
+  { id: 6,  name: 'The Independent',      url: 'https://independent.co.uk',        category: 'news',       enabled: true },
+  { id: 7,  name: 'Financial Times',      url: 'https://ft.com',                   category: 'news',       enabled: true },
+  { id: 8,  name: 'The Economist',        url: 'https://economist.com',            category: 'news',       enabled: true },
+  { id: 9,  name: 'Der Spiegel',          url: 'https://spiegel.de',               category: 'news',       enabled: true },
+  { id: 10, name: 'Le Monde',             url: 'https://lemonde.fr',               category: 'news',       enabled: true },
+  { id: 11, name: 'El País',              url: 'https://elpais.com',               category: 'news',       enabled: true },
+  { id: 12, name: 'France 24',            url: 'https://france24.com',             category: 'news',       enabled: true },
+  { id: 13, name: 'Euronews',             url: 'https://euronews.com',             category: 'news',       enabled: true },
+  { id: 14, name: 'Time Magazine',        url: 'https://time.com',                 category: 'news',       enabled: true },
+  { id: 15, name: 'The New York Times',   url: 'https://nytimes.com',              category: 'news',       enabled: true },
+  { id: 16, name: 'The Wall Street Journal', url: 'https://wsj.com',              category: 'news',       enabled: true },
+  { id: 17, name: 'FactCheck.org',        url: 'https://factcheck.org',            category: 'fact-check', enabled: true },
+  { id: 18, name: 'Reuters Fact Check',   url: 'https://reuters.com/fact-check',   category: 'fact-check', enabled: true },
+  { id: 19, name: 'UK Government',        url: 'https://gov.uk',                   category: 'government', enabled: true },
+  { id: 20, name: 'European Commission',  url: 'https://ec.europa.eu',             category: 'government', enabled: true },
+  { id: 21, name: 'United Nations',       url: 'https://un.org',                   category: 'government', enabled: true },
+  { id: 22, name: 'World Bank',           url: 'https://worldbank.org',            category: 'government', enabled: true },
+  { id: 23, name: 'IMF',                  url: 'https://imf.org',                  category: 'government', enabled: true },
+  { id: 24, name: 'NATO',                 url: 'https://nato.int',                 category: 'government', enabled: true },
+  { id: 25, name: 'Harvard University',   url: 'https://harvard.edu',              category: 'academic',   enabled: true },
+  { id: 26, name: 'MIT',                  url: 'https://mit.edu',                  category: 'academic',   enabled: true },
+  { id: 27, name: 'Stanford University',  url: 'https://stanford.edu',             category: 'academic',   enabled: true },
+  { id: 28, name: 'Oxford University',    url: 'https://ox.ac.uk',                 category: 'academic',   enabled: true },
+  { id: 29, name: 'Forbes',               url: 'https://forbes.com',               category: 'news',       enabled: true },
+  { id: 30, name: 'Fortune',              url: 'https://fortune.com',              category: 'news',       enabled: true },
+  { id: 31, name: 'MarketWatch',          url: 'https://marketwatch.com',          category: 'finance',    enabled: true },
+  { id: 32, name: 'Yahoo Finance',        url: 'https://finance.yahoo.com',        category: 'finance',    enabled: true },
+  { id: 33, name: 'Federal Reserve',      url: 'https://federalreserve.gov',       category: 'data',       enabled: true },
+];
+
+let currentFilter = 'all';
+let isLight = localStorage.getItem('verifai_theme') === 'light';
+let nextSourceId = 100;
+
+// Demo fact-check responses
+const demoResponses = {
+  false: {
+    verdict: 'false',
+    emoji: '✗',
+    label: 'False',
+    sub: 'Contradicted by multiple trusted sources',
+    confidence: 92,
+    summary: "This claim is false. The statistic cited has been fabricated — official data from the WHO and peer-reviewed studies show the opposite finding.",
+    sources: [
+      { name: 'Reuters Fact Check', url: 'https://reuters.com/fact-check', desc: 'Direct rebuttal with primary source documents and official data' },
+      { name: 'Snopes', url: 'https://snopes.com', desc: 'Detailed investigation into the origin and spread of this claim' },
+      { name: 'AP Fact Check', url: 'https://apnews.com/hub/ap-fact-check', desc: 'Cross-referenced with government records showing contrary evidence' },
+    ],
+    tags: ['Misinformation', 'Fabricated data']
+  },
+  questionable: {
+    verdict: 'questionable',
+    emoji: '⚠️',
+    label: 'Questionable',
+    sub: 'Partially accurate — key context missing',
+    confidence: 61,
+    summary: "The core statistic is real but taken out of context. The original study covers a different time period, and the trend has since reversed — changing the meaning significantly.",
+    sources: [
+      { name: 'Full Study — Nature.com', url: 'https://nature.com', desc: 'Original research with the full data range and methodology' },
+      { name: 'PolitiFact', url: 'https://politifact.com', desc: 'Independent rating explaining what context was omitted' },
+      { name: 'FactCheck.org', url: 'https://factcheck.org', desc: 'Analysis of how the framing distorts the original finding' },
+    ],
+    tags: ['Missing context', 'Misleading framing']
+  },
+  verified: {
+    verdict: 'verified',
+    emoji: '✓',
+    label: 'Verified',
+    sub: 'Supported by multiple trusted sources',
+    confidence: 88,
+    summary: "This claim is accurate. The facts align with official government records and have been independently confirmed by multiple established news organizations.",
+    sources: [
+      { name: 'Associated Press', url: 'https://apnews.com', desc: 'Independent confirmation with links to original source documents' },
+      { name: 'Reuters', url: 'https://reuters.com', desc: 'Corroborating report citing official data and named officials' },
+      { name: 'BBC News', url: 'https://bbc.com/news', desc: 'Coverage aligned with the claim across multiple verified reports' },
+    ],
+    tags: ['Confirmed', 'Official source']
+  }
+};
+
+
+// ── Check Logic ────────────────────────────────────────────
+document.getElementById('checkBtn').addEventListener('click', runCheck);
+
+async function runCheck() {
+  const text = checkInput.value.trim();
+  if (!text) {
+    showSnack('Please paste some text to verify.');
+    return;
+  }
+
+  // Hide previous result
+  document.getElementById('resultCard').classList.remove('visible');
+  
+  // Show loader
+  const loader = document.getElementById('loader');
+  loader.classList.add('visible');
+  document.getElementById('checkBtn').disabled = true;
+
+  const steps = ['step1', 'step2', 'step3', 'step4'];
+
+  // Animate steps
+  for (let i = 0; i < steps.length; i++) {
+    await sleep(600);
+    if (i > 0) {
+      document.getElementById(steps[i-1]).classList.remove('active');
+      document.getElementById(steps[i-1]).classList.add('done');
+    }
+    document.getElementById(steps[i]).classList.add('active');
+  }
+
+  await sleep(700);
+
+  // Reset steps
+  steps.forEach(s => {
+    document.getElementById(s).classList.remove('active', 'done');
+  });
+
+  loader.classList.remove('visible');
+  document.getElementById('checkBtn').disabled = false;
+
+  // Pick a demo result based on text content keywords
+  let result;
+  const lower = text.toLowerCase();
+  if (lower.includes('true') || lower.includes('confirm') || lower.includes('official') || lower.includes('report')) {
+    result = demoResponses.verified;
+  } else if (lower.includes('false') || lower.includes('fake') || lower.includes('hoax') || lower.includes('lie') || lower.includes('never') || lower.includes('impossible')) {
+    result = demoResponses.false;
+  } else {
+    // Random between false and questionable for demo variety
+    const roll = Math.random();
+    if (roll < 0.4) result = demoResponses.verified;
+    else if (roll < 0.7) result = demoResponses.questionable;
+    else result = demoResponses.false;
+  }
+
+  showResult(result, text);
+  saveToHistory(result, text);
+
+  // Show alert toast for false content
+  if (result.verdict === 'false') {
+    showAlert('⚠️ Misinformation detected — see sources below');
+  }
+}
+
+function showResult(result, text) {
+  const card = document.getElementById('resultCard');
+
+  // Badge
+  const badge = document.getElementById('verdictBadge');
+  badge.textContent = result.emoji;
+  badge.className = 'verdict-badge ' + result.verdict;
+
+  // Label
+  const label = document.getElementById('verdictLabel');
+  label.textContent = result.label;
+  label.className = 'verdict-label ' + result.verdict;
+
+  document.getElementById('verdictSub').textContent = result.sub;
+
+  // Confidence bar
+  const fill = document.getElementById('confidenceFill');
+  fill.className = 'confidence-fill ' + result.verdict;
+  setTimeout(() => { fill.style.width = result.confidence + '%'; }, 50);
+
+  // Brief corrected summary
+  document.getElementById('resultSummary').textContent = result.summary;
+
+  // Top 3 trusted sources
+  const lbl = document.getElementById('sourcesLabel');
+  const sourceLinks = document.getElementById('sourceLinks');
+  const top3 = result.sources.slice(0, 3);
+
+  if (result.verdict === 'verified') {
+    lbl.textContent = '3 sources that confirm this';
+  } else if (result.verdict === 'questionable') {
+    lbl.textContent = '3 sources with more context';
+  } else {
+    lbl.textContent = '3 sources that correct this';
+  }
+
+  sourceLinks.innerHTML = top3.map((s, i) => `
+    <a class="source-item" href="${s.url}" target="_blank">
+      <div class="source-rank">${i + 1}</div>
+      <div class="source-info">
+        <div class="source-name">${s.name}</div>
+        <div class="source-desc">${s.desc}</div>
+      </div>
+      <span class="source-arrow">↗</span>
+    </a>
+  `).join('');
+
+  // Tags
+  document.getElementById('tagsRow').innerHTML = result.tags.map(t => `<span class="tag">${t}</span>`).join('');
+
+  card.classList.add('visible');
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function saveToHistory(result, text) {
+  history_data.unshift({
+    id: Date.now(),
+    text: text.slice(0, 120),
+    verdict: result.verdict,
+    label: result.label,
+    confidence: result.confidence,
+    time: new Date().toISOString(),
+    summary: result.summary
+  });
+
+  // Cap at 50
+  if (history_data.length > 50) history_data.pop();
+  localStorage.setItem('verifai_history', JSON.stringify(history_data));
+}
+
+// ── History ────────────────────────────────────────────────
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  const filtered = currentFilter === 'all'
+    ? history_data
+    : history_data.filter(h => h.verdict === currentFilter);
+
+  if (filtered.length === 0) {
+    list.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🕐</div>
+        <div class="empty-title">No checks yet</div>
+        <div class="empty-sub">Your verification history will appear here</div>
+      </div>
+    `;
+    return;
+  }
+
+  list.innerHTML = filtered.map(h => `
+    <div class="history-item" onclick="replayCheck('${h.id}')">
+      <div class="history-dot ${h.verdict}"></div>
+      <div class="history-text">${escapeHtml(h.text)}</div>
+      <div class="history-meta">
+        <div class="history-verdict ${h.verdict}">${h.verdict === 'verified' ? '✓' : h.verdict === 'questionable' ? '⚠' : '✗'} ${h.label}</div>
+        <div class="history-time">${formatTime(h.time)}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+document.querySelectorAll('.filter-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    currentFilter = chip.dataset.filter;
+    renderHistory();
+  });
+});
+
+function replayCheck(id) {
+  const item = history_data.find(h => h.id == id);
+  if (!item) return;
+  checkInput.value = item.text;
+  charCount.textContent = item.text.length + '/2000';
+  showPage('check');
+  setTimeout(() => runCheck(), 200);
+}
+
+function clearHistory() {
+  history_data = [];
+  localStorage.setItem('verifai_history', '[]');
+  showSnack('History cleared');
+}
+
+// ── Source Library ─────────────────────────────────────────
+const SOURCE_LIBRARY = [
+  { group: 'Major News Agencies', icon: '📡', sources: [
+    { name: 'Reuters', url: 'https://reuters.com', category: 'news' },
+    { name: 'Associated Press (AP)', url: 'https://apnews.com', category: 'news' },
+    { name: 'Agence France-Presse (AFP)', url: 'https://afp.com', category: 'news' },
+    { name: 'United Press International', url: 'https://upi.com', category: 'news' },
+    { name: 'Bloomberg', url: 'https://bloomberg.com', category: 'news' },
+  ]},
+  { group: 'US News Outlets', icon: '🇺🇸', sources: [
+    { name: 'The New York Times', url: 'https://nytimes.com', category: 'news' },
+    { name: 'The Washington Post', url: 'https://washingtonpost.com', category: 'news' },
+    { name: 'The Wall Street Journal', url: 'https://wsj.com', category: 'news' },
+    { name: 'CNN', url: 'https://cnn.com', category: 'news' },
+    { name: 'NBC News', url: 'https://nbcnews.com', category: 'news' },
+    { name: 'CBS News', url: 'https://cbsnews.com', category: 'news' },
+    { name: 'ABC News', url: 'https://abcnews.go.com', category: 'news' },
+    { name: 'NPR', url: 'https://npr.org', category: 'news' },
+    { name: 'PBS NewsHour', url: 'https://pbs.org/newshour', category: 'news' },
+    { name: 'USA Today', url: 'https://usatoday.com', category: 'news' },
+    { name: 'Los Angeles Times', url: 'https://latimes.com', category: 'news' },
+    { name: 'Chicago Tribune', url: 'https://chicagotribune.com', category: 'news' },
+    { name: 'The Boston Globe', url: 'https://bostonglobe.com', category: 'news' },
+    { name: 'Politico', url: 'https://politico.com', category: 'news' },
+    { name: 'The Hill', url: 'https://thehill.com', category: 'news' },
+    { name: 'Axios', url: 'https://axios.com', category: 'news' },
+    { name: 'Time Magazine', url: 'https://time.com', category: 'news' },
+    { name: 'Newsweek', url: 'https://newsweek.com', category: 'news' },
+    { name: 'The Atlantic', url: 'https://theatlantic.com', category: 'news' },
+    { name: 'Vox', url: 'https://vox.com', category: 'news' },
+  ]},
+  { group: 'UK & European News', icon: '🇪🇺', sources: [
+    { name: 'BBC News', url: 'https://bbc.com/news', category: 'news' },
+    { name: 'The Guardian', url: 'https://theguardian.com', category: 'news' },
+    { name: 'The Times (UK)', url: 'https://thetimes.co.uk', category: 'news' },
+    { name: 'The Telegraph', url: 'https://telegraph.co.uk', category: 'news' },
+    { name: 'The Independent', url: 'https://independent.co.uk', category: 'news' },
+    { name: 'Financial Times', url: 'https://ft.com', category: 'news' },
+    { name: 'The Economist', url: 'https://economist.com', category: 'news' },
+    { name: 'Sky News', url: 'https://news.sky.com', category: 'news' },
+    { name: 'Deutsche Welle', url: 'https://dw.com', category: 'news' },
+    { name: 'Der Spiegel', url: 'https://spiegel.de', category: 'news' },
+    { name: 'Le Monde', url: 'https://lemonde.fr', category: 'news' },
+    { name: 'El País', url: 'https://elpais.com', category: 'news' },
+    { name: 'Corriere della Sera', url: 'https://corriere.it', category: 'news' },
+    { name: 'NOS (Netherlands)', url: 'https://nos.nl', category: 'news' },
+    { name: 'SVT (Sweden)', url: 'https://svt.se', category: 'news' },
+    { name: 'RTE (Ireland)', url: 'https://rte.ie', category: 'news' },
+    { name: 'France 24', url: 'https://france24.com', category: 'news' },
+    { name: 'Euronews', url: 'https://euronews.com', category: 'news' },
+  ]},
+  { group: 'Asia & Pacific News', icon: '🌏', sources: [
+    { name: 'NHK World (Japan)', url: 'https://www3.nhk.or.jp/nhkworld', category: 'news' },
+    { name: 'South China Morning Post', url: 'https://scmp.com', category: 'news' },
+    { name: 'The Japan Times', url: 'https://japantimes.co.jp', category: 'news' },
+    { name: 'The Hindu', url: 'https://thehindu.com', category: 'news' },
+    { name: 'Times of India', url: 'https://timesofindia.indiatimes.com', category: 'news' },
+    { name: 'ABC Australia', url: 'https://abc.net.au', category: 'news' },
+    { name: 'Channel NewsAsia', url: 'https://channelnewsasia.com', category: 'news' },
+    { name: 'The Straits Times', url: 'https://straitstimes.com', category: 'news' },
+    { name: 'Korea Herald', url: 'https://koreaherald.com', category: 'news' },
+    { name: 'Al Jazeera', url: 'https://aljazeera.com', category: 'news' },
+  ]},
+  { group: 'Americas (Non-US) News', icon: '🌎', sources: [
+    { name: 'CBC (Canada)', url: 'https://cbc.ca', category: 'news' },
+    { name: 'Globe and Mail', url: 'https://theglobeandmail.com', category: 'news' },
+    { name: 'Toronto Star', url: 'https://thestar.com', category: 'news' },
+    { name: 'Folha de S.Paulo', url: 'https://folha.uol.com.br', category: 'news' },
+    { name: 'O Globo', url: 'https://oglobo.globo.com', category: 'news' },
+    { name: 'La Nación (Argentina)', url: 'https://lanacion.com.ar', category: 'news' },
+    { name: 'El Universal (Mexico)', url: 'https://eluniversal.com.mx', category: 'news' },
+    { name: 'Reforma', url: 'https://reforma.com', category: 'news' },
+  ]},
+  { group: 'Fact-Checking Organizations', icon: '✅', sources: [
+    { name: 'Snopes', url: 'https://snopes.com', category: 'fact-check' },
+    { name: 'PolitiFact', url: 'https://politifact.com', category: 'fact-check' },
+    { name: 'FactCheck.org', url: 'https://factcheck.org', category: 'fact-check' },
+    { name: 'Full Fact (UK)', url: 'https://fullfact.org', category: 'fact-check' },
+    { name: 'AFP Fact Check', url: 'https://factcheck.afp.com', category: 'fact-check' },
+    { name: 'Reuters Fact Check', url: 'https://reuters.com/fact-check', category: 'fact-check' },
+    { name: 'AP Fact Check', url: 'https://apnews.com/hub/ap-fact-check', category: 'fact-check' },
+    { name: 'Washington Post Fact Checker', url: 'https://washingtonpost.com/news/fact-checker', category: 'fact-check' },
+    { name: 'Lead Stories', url: 'https://leadstories.com', category: 'fact-check' },
+    { name: 'Check Your Fact', url: 'https://checkyourfact.com', category: 'fact-check' },
+    { name: 'The Dispatch Fact Check', url: 'https://thedispatch.com/fact-check', category: 'fact-check' },
+    { name: 'Science Feedback', url: 'https://sciencefeedback.co', category: 'fact-check' },
+    { name: 'Health Feedback', url: 'https://healthfeedback.org', category: 'fact-check' },
+    { name: 'Climate Feedback', url: 'https://climatefeedback.org', category: 'fact-check' },
+    { name: 'Africa Check', url: 'https://africacheck.org', category: 'fact-check' },
+    { name: 'BOOM Live (India)', url: 'https://boomlive.in', category: 'fact-check' },
+    { name: 'Maldita.es (Spain)', url: 'https://maldita.es', category: 'fact-check' },
+    { name: 'Correctiv (Germany)', url: 'https://correctiv.org', category: 'fact-check' },
+    { name: 'Aos Fatos (Brazil)', url: 'https://aosfatos.org', category: 'fact-check' },
+    { name: 'Chequeado (Argentina)', url: 'https://chequeado.com', category: 'fact-check' },
+  ]},
+  { group: 'Government & Official Sources', icon: '🏛️', sources: [
+    { name: 'White House', url: 'https://whitehouse.gov', category: 'government' },
+    { name: 'US Congress', url: 'https://congress.gov', category: 'government' },
+    { name: 'US State Department', url: 'https://state.gov', category: 'government' },
+    { name: 'CDC', url: 'https://cdc.gov', category: 'government' },
+    { name: 'FDA', url: 'https://fda.gov', category: 'government' },
+    { name: 'NIH', url: 'https://nih.gov', category: 'government' },
+    { name: 'EPA', url: 'https://epa.gov', category: 'government' },
+    { name: 'NASA', url: 'https://nasa.gov', category: 'government' },
+    { name: 'NOAA', url: 'https://noaa.gov', category: 'government' },
+    { name: 'FBI', url: 'https://fbi.gov', category: 'government' },
+    { name: 'UK Government', url: 'https://gov.uk', category: 'government' },
+    { name: 'European Commission', url: 'https://ec.europa.eu', category: 'government' },
+    { name: 'United Nations', url: 'https://un.org', category: 'government' },
+    { name: 'World Health Organization', url: 'https://who.int', category: 'health' },
+    { name: 'World Bank', url: 'https://worldbank.org', category: 'government' },
+    { name: 'IMF', url: 'https://imf.org', category: 'government' },
+    { name: 'OECD', url: 'https://oecd.org', category: 'government' },
+    { name: 'NATO', url: 'https://nato.int', category: 'government' },
+  ]},
+  { group: 'Scientific & Medical Journals', icon: '🔬', sources: [
+    { name: 'Nature', url: 'https://nature.com', category: 'science' },
+    { name: 'Science (AAAS)', url: 'https://science.org', category: 'science' },
+    { name: 'The Lancet', url: 'https://thelancet.com', category: 'science' },
+    { name: 'New England Journal of Medicine', url: 'https://nejm.org', category: 'health' },
+    { name: 'JAMA Network', url: 'https://jamanetwork.com', category: 'health' },
+    { name: 'BMJ', url: 'https://bmj.com', category: 'health' },
+    { name: 'Cell', url: 'https://cell.com', category: 'science' },
+    { name: 'PNAS', url: 'https://pnas.org', category: 'science' },
+    { name: 'PubMed / NCBI', url: 'https://pubmed.ncbi.nlm.nih.gov', category: 'science' },
+    { name: 'Cochrane Library', url: 'https://cochranelibrary.com', category: 'health' },
+    { name: 'Scientific American', url: 'https://scientificamerican.com', category: 'science' },
+    { name: 'New Scientist', url: 'https://newscientist.com', category: 'science' },
+    { name: 'Physics Today', url: 'https://physicstoday.org', category: 'science' },
+    { name: 'IEEE Spectrum', url: 'https://spectrum.ieee.org', category: 'science' },
+    { name: 'arXiv', url: 'https://arxiv.org', category: 'science' },
+  ]},
+  { group: 'Academic & Research Institutions', icon: '🎓', sources: [
+    { name: 'Harvard University', url: 'https://harvard.edu', category: 'academic' },
+    { name: 'MIT', url: 'https://mit.edu', category: 'academic' },
+    { name: 'Stanford University', url: 'https://stanford.edu', category: 'academic' },
+    { name: 'Oxford University', url: 'https://ox.ac.uk', category: 'academic' },
+    { name: 'Cambridge University', url: 'https://cam.ac.uk', category: 'academic' },
+    { name: 'Yale University', url: 'https://yale.edu', category: 'academic' },
+    { name: 'Princeton University', url: 'https://princeton.edu', category: 'academic' },
+    { name: 'Columbia University', url: 'https://columbia.edu', category: 'academic' },
+    { name: 'UC Berkeley', url: 'https://berkeley.edu', category: 'academic' },
+    { name: 'Brookings Institution', url: 'https://brookings.edu', category: 'academic' },
+    { name: 'RAND Corporation', url: 'https://rand.org', category: 'academic' },
+    { name: 'Pew Research Center', url: 'https://pewresearch.org', category: 'academic' },
+    { name: 'Council on Foreign Relations', url: 'https://cfr.org', category: 'academic' },
+    { name: 'Carnegie Endowment', url: 'https://carnegieendowment.org', category: 'academic' },
+    { name: 'CSIS', url: 'https://csis.org', category: 'academic' },
+  ]},
+  { group: 'Technology & Business News', icon: '💻', sources: [
+    { name: 'TechCrunch', url: 'https://techcrunch.com', category: 'tech' },
+    { name: 'The Verge', url: 'https://theverge.com', category: 'tech' },
+    { name: 'Wired', url: 'https://wired.com', category: 'tech' },
+    { name: 'Ars Technica', url: 'https://arstechnica.com', category: 'tech' },
+    { name: 'CNET', url: 'https://cnet.com', category: 'tech' },
+    { name: 'Engadget', url: 'https://engadget.com', category: 'tech' },
+    { name: 'ZDNet', url: 'https://zdnet.com', category: 'tech' },
+    { name: 'MIT Technology Review', url: 'https://technologyreview.com', category: 'tech' },
+    { name: 'Forbes', url: 'https://forbes.com', category: 'news' },
+    { name: 'Fortune', url: 'https://fortune.com', category: 'news' },
+    { name: 'Business Insider', url: 'https://businessinsider.com', category: 'news' },
+    { name: 'CNBC', url: 'https://cnbc.com', category: 'news' },
+    { name: 'MarketWatch', url: 'https://marketwatch.com', category: 'finance' },
+    { name: 'Yahoo Finance', url: 'https://finance.yahoo.com', category: 'finance' },
+  ]},
+  { group: 'Data & Statistics', icon: '📊', sources: [
+    { name: 'US Census Bureau', url: 'https://census.gov', category: 'data' },
+    { name: 'Bureau of Labor Statistics', url: 'https://bls.gov', category: 'data' },
+    { name: 'Bureau of Economic Analysis', url: 'https://bea.gov', category: 'data' },
+    { name: 'Federal Reserve', url: 'https://federalreserve.gov', category: 'data' },
+    { name: 'Eurostat', url: 'https://ec.europa.eu/eurostat', category: 'data' },
+    { name: 'UK Office for National Statistics', url: 'https://ons.gov.uk', category: 'data' },
+    { name: 'Our World in Data', url: 'https://ourworldindata.org', category: 'data' },
+    { name: 'Statista', url: 'https://statista.com', category: 'data' },
+    { name: 'Gallup', url: 'https://gallup.com', category: 'data' },
+    { name: 'FiveThirtyEight', url: 'https://fivethirtyeight.com', category: 'data' },
+  ]},
+  { group: 'Encyclopedias & Reference', icon: '📚', sources: [
+    { name: 'Wikipedia', url: 'https://wikipedia.org', category: 'other' },
+    { name: 'Britannica', url: 'https://britannica.com', category: 'other' },
+    { name: 'Stanford Encyclopedia of Philosophy', url: 'https://plato.stanford.edu', category: 'academic' },
+    { name: 'Internet Archive', url: 'https://archive.org', category: 'other' },
+    { name: 'Library of Congress', url: 'https://loc.gov', category: 'other' },
+    { name: 'Google Scholar', url: 'https://scholar.google.com', category: 'academic' },
+    { name: 'Semantic Scholar', url: 'https://semanticscholar.org', category: 'academic' },
+  ]},
+  { group: 'Health & Medicine', icon: '🏥', sources: [
+    { name: 'Mayo Clinic', url: 'https://mayoclinic.org', category: 'health' },
+    { name: 'Cleveland Clinic', url: 'https://clevelandclinic.org', category: 'health' },
+    { name: 'Johns Hopkins Medicine', url: 'https://hopkinsmedicine.org', category: 'health' },
+    { name: 'WebMD', url: 'https://webmd.com', category: 'health' },
+    { name: 'Healthline', url: 'https://healthline.com', category: 'health' },
+    { name: 'MedlinePlus', url: 'https://medlineplus.gov', category: 'health' },
+    { name: 'American Medical Association', url: 'https://ama-assn.org', category: 'health' },
+    { name: 'American Heart Association', url: 'https://heart.org', category: 'health' },
+    { name: 'American Cancer Society', url: 'https://cancer.org', category: 'health' },
+  ]},
+  { group: 'Environment & Climate', icon: '🌍', sources: [
+    { name: 'IPCC', url: 'https://ipcc.ch', category: 'science' },
+    { name: 'UNEP', url: 'https://unep.org', category: 'government' },
+    { name: 'Carbon Brief', url: 'https://carbonbrief.org', category: 'science' },
+    { name: 'Climate.gov', url: 'https://climate.gov', category: 'science' },
+    { name: 'National Geographic', url: 'https://nationalgeographic.com', category: 'science' },
+    { name: 'The Conversation', url: 'https://theconversation.com', category: 'academic' },
+  ]},
+  { group: 'Legal & Court Records', icon: '⚖️', sources: [
+    { name: 'Supreme Court of the US', url: 'https://supremecourt.gov', category: 'government' },
+    { name: 'US Courts', url: 'https://uscourts.gov', category: 'government' },
+    { name: 'Cornell Law School – LII', url: 'https://law.cornell.edu', category: 'academic' },
+    { name: 'Justia', url: 'https://justia.com', category: 'other' },
+    { name: 'Court Listener', url: 'https://courtlistener.com', category: 'other' },
+    { name: 'PACER', url: 'https://pacer.uscourts.gov', category: 'government' },
+  ]},
+  { group: 'Financial & Economic', icon: '💰', sources: [
+    { name: 'SEC EDGAR', url: 'https://sec.gov/edgar', category: 'finance' },
+    { name: 'Federal Reserve Economic Data (FRED)', url: 'https://fred.stlouisfed.org', category: 'data' },
+    { name: 'Trading Economics', url: 'https://tradingeconomics.com', category: 'finance' },
+    { name: 'Investopedia', url: 'https://investopedia.com', category: 'finance' },
+    { name: 'CoinDesk', url: 'https://coindesk.com', category: 'finance' },
+  ]},
+  { group: 'Sports', icon: '🏆', sources: [
+    { name: 'ESPN', url: 'https://espn.com', category: 'other' },
+    { name: 'Sports Illustrated', url: 'https://si.com', category: 'other' },
+    { name: 'The Athletic', url: 'https://theathletic.com', category: 'other' },
+    { name: 'Bleacher Report', url: 'https://bleacherreport.com', category: 'other' },
+    { name: 'BBC Sport', url: 'https://bbc.com/sport', category: 'other' },
+  ]},
+  { group: 'Entertainment & Culture', icon: '🎬', sources: [
+    { name: 'Variety', url: 'https://variety.com', category: 'other' },
+    { name: 'The Hollywood Reporter', url: 'https://hollywoodreporter.com', category: 'other' },
+    { name: 'Rolling Stone', url: 'https://rollingstone.com', category: 'other' },
+    { name: 'Pitchfork', url: 'https://pitchfork.com', category: 'other' },
+    { name: 'IMDb', url: 'https://imdb.com', category: 'other' },
+  ]},
+];
+
+// Build a quick lookup: url → library entry
+const libraryMap = {};
+SOURCE_LIBRARY.forEach(g => g.sources.forEach(s => { libraryMap[s.url] = s; }));
+
+function isInUserSources(url) {
+  return trusted_sources.some(s => s.url === url && s.enabled);
+}
+
+function renderLibrary(filter = '') {
+  const container = document.getElementById('sourceLibrary');
+  const q = filter.toLowerCase();
+
+  let html = '';
+  SOURCE_LIBRARY.forEach((group, gi) => {
+    const matched = q
+      ? group.sources.filter(s => s.name.toLowerCase().includes(q) || s.url.includes(q))
+      : group.sources;
+
+    if (!matched.length) return;
+
+    const activeInGroup = matched.filter(s => isInUserSources(s.url)).length;
+    const isOpen = q.length > 0 || gi < 2; // auto-open first 2 + search results
+
+    html += `
+      <div class="lib-group ${isOpen ? 'open' : ''}" id="libgroup-${gi}">
+        <div class="lib-group-header" onclick="toggleGroup(${gi})">
+          <div class="lib-group-left">
+            <span class="lib-group-icon">${group.icon}</span>
+            <span class="lib-group-name">${group.group}</span>
+          </div>
+          <div class="lib-group-meta">
+            <span class="lib-group-count ${activeInGroup > 0 ? 'has-active' : ''}">${activeInGroup > 0 ? activeInGroup + ' active' : matched.length + ' sources'}</span>
+            <button class="lib-select-all" onclick="event.stopPropagation(); selectAllGroup(${gi})">All</button>
+            <span class="lib-group-chevron">▶</span>
+          </div>
+        </div>
+        <div class="lib-group-body">
+          ${matched.map(s => {
+            const added = isInUserSources(s.url);
+            return `
+            <div class="lib-source-row">
+              <div class="lib-source-info" style="flex:1; min-width:0;">
+                <div class="lib-source-name">${escapeHtml(s.name)}</div>
+                <div class="lib-source-url">${s.url.replace('https://','')}</div>
+              </div>
+              <button class="lib-source-btn ${added ? 'added' : ''}" onclick="toggleLibSource('${s.url}', '${escapeHtml(s.name)}', '${s.category}')">
+                ${added ? '✓ Added' : '+ Add'}
+              </button>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html || `<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No sources found</div></div>`;
+}
+
+function toggleGroup(gi) {
+  const el = document.getElementById('libgroup-' + gi);
+  if (el) el.classList.toggle('open');
+}
+
+function toggleLibSource(url, name, category) {
+  const existing = trusted_sources.find(s => s.url === url);
+  if (existing) {
+    existing.enabled = !existing.enabled;
+    showSnack(existing.enabled ? `${name} enabled` : `${name} disabled`);
+  } else {
+    trusted_sources.push({ id: nextSourceId++, name, url, category, enabled: true });
+    showSnack(`${name} added ✓`);
+  }
+  saveSources();
+  renderSources();
+  renderLibrary(document.getElementById('sourceSearch').value);
+}
+
+function selectAllGroup(gi) {
+  const group = SOURCE_LIBRARY[gi];
+  if (!group) return;
+  let added = 0;
+  group.sources.forEach(s => {
+    if (!trusted_sources.find(x => x.url === s.url)) {
+      trusted_sources.push({ id: nextSourceId++, name: s.name, url: s.url, category: s.category, enabled: true });
+      added++;
+    } else {
+      const ex = trusted_sources.find(x => x.url === s.url);
+      if (ex && !ex.enabled) { ex.enabled = true; added++; }
+    }
+  });
+  saveSources();
+  renderSources();
+  renderLibrary(document.getElementById('sourceSearch').value);
+  showSnack(`${added ? added + ' sources added' : 'All already active'}`);
+}
+
+function renderSources() {
+  const list = document.getElementById('sourceList');
+  const wrap = document.getElementById('activeSourcesWrap');
+  const active = trusted_sources.filter(s => s.enabled);
+  document.getElementById('sourcesCount').textContent = active.length + ' active';
+
+  if (active.length === 0) {
+    wrap.style.display = 'none';
+    return;
+  }
+  wrap.style.display = 'block';
+
+  list.innerHTML = active.map(s => `
+    <div class="managed-source" id="src-${s.id}">
+      <button class="source-toggle on" onclick="toggleSource(${s.id})"></button>
+      <div class="managed-source-info">
+        <div class="managed-source-name">${escapeHtml(s.name)}</div>
+        <div class="managed-source-url">${s.url.replace('https://','')}</div>
+      </div>
+      <span class="source-cat">${s.category}</span>
+      <button class="btn-del" onclick="removeSource(${s.id})">✕</button>
+    </div>
+  `).join('');
+}
+
+function toggleSource(id) {
+  const s = trusted_sources.find(s => s.id === id);
+  if (s) s.enabled = !s.enabled;
+  saveSources();
+  renderSources();
+  renderLibrary(document.getElementById('sourceSearch').value);
+}
+
+function removeSource(id) {
+  const s = trusted_sources.find(s => s.id === id);
+  if (s) s.enabled = false;
+  saveSources();
+  renderSources();
+  renderLibrary(document.getElementById('sourceSearch').value);
+  showSnack('Source removed');
+}
+
+function deleteSource(id) { removeSource(id); }
+
+document.getElementById('addSourceBtn').addEventListener('click', () => {
+  const name = document.getElementById('sourceName').value.trim();
+  const url  = document.getElementById('sourceUrl').value.trim();
+  const cat  = document.getElementById('sourceCategory').value;
+
+  if (!name || !url) { showSnack('Please enter a name and URL'); return; }
+
+  let cleanUrl = url;
+  if (!cleanUrl.startsWith('http')) cleanUrl = 'https://' + cleanUrl;
+
+  if (trusted_sources.find(s => s.url === cleanUrl)) {
+    showSnack('Source already in your list');
+    return;
+  }
+
+  trusted_sources.push({ id: nextSourceId++, name, url: cleanUrl, category: cat, enabled: true });
+  saveSources();
+  renderSources();
+  renderLibrary(document.getElementById('sourceSearch').value);
+
+  document.getElementById('sourceName').value = '';
+  document.getElementById('sourceUrl').value = '';
+  showSnack('Custom source added ✓');
+});
+
+document.getElementById('sourceSearch').addEventListener('input', (e) => {
+  renderLibrary(e.target.value);
+});
+
+function saveSources() {
+  localStorage.setItem('verifai_sources', JSON.stringify(trusted_sources));
+}
+
+// ── Alert Toast ────────────────────────────────────────────
+function showAlert(msg) {
+  const toast = document.getElementById('alert-toast');
+  document.getElementById('alertText').textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 5000);
+}
+
+// ── Snackbar ───────────────────────────────────────────────
+function showSnack(msg) {
+  const sb = document.getElementById('snackbar');
+  sb.textContent = msg;
+  sb.classList.add('show');
+  setTimeout(() => sb.classList.remove('show'), 2500);
+}
+
+// ── Settings Modal ─────────────────────────────────────────
+document.getElementById('settingsBtn').addEventListener('click', () => {
+  document.getElementById('settingsModal').classList.add('open');
+});
+
+function closeSettings() {
+  document.getElementById('settingsModal').classList.remove('open');
+}
+
+document.getElementById('settingsModal').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeSettings();
+});
+
+document.querySelectorAll('.source-toggle').forEach(t => {
+  t.addEventListener('click', () => t.classList.toggle('on'));
+});
+
+// ── Utils ──────────────────────────────────────────────────
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function formatTime(iso) {
+  const d = new Date(iso);
+  const now = new Date();
+  const diff = Math.floor((now - d) / 1000);
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+// ── Init ───────────────────────────────────────────────────
+renderSources();
+setTimeout(() => renderLibrary(), 0);
+</script>
+
+  <!-- PWA Service Worker -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js', { scope: './' })
+          .then(reg => console.log('VerifAI SW registered:', reg.scope))
+          .catch(err => console.log('SW registration failed:', err));
+      });
+    }
+  </script>
+</body>
+</html>
